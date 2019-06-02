@@ -1,0 +1,262 @@
+//Redirect to dashboard when user log in info is remembered by browser
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web;
+using System.Web.Mvc;
+
+namespace ConstructionNew.Controllers
+{
+    public class HomeController : Controller
+    {
+        // GET: Home
+        public ActionResult Index()
+        {
+            if (User.Identity.IsAuthenticated)
+            {
+                return Redirect("/Dashboard");
+            }
+            else
+            {
+                return View();
+            }
+        }
+		
+//--------------------------------------------------------------
+//return Edit/Delete/Details Action Links to the company news index
+
+@model IEnumerable<ConstructionNew.Models.CompanyNews>
+
+@{
+
+    ViewBag.Title = "Company News";
+}
+
+@using (Html.BeginForm("Create", "CompanyNews", FormMethod.Post))
+
+{
+    @Html.AntiForgeryToken()
+    <div class="card">
+        <div class="card-body">
+
+            <div class="form-group">
+                <div class="col-md-12 col-lg-12 text-left message" style="color:red; font-weight:600;" id="message"></div>
+            </div>
+        </div>
+    </div>
+}
+
+<div class="row">
+    @foreach (var item in Model)
+    {
+        if (item.ExpirationDate.GetValueOrDefault(DateTime.Now).Ticks >= DateTime.Now.Ticks)
+        {
+            <div class="col-sm-6 col-md-4">
+                <div class="thumbnail">
+                    <div class="caption bg-info">
+                        <h3>@Html.DisplayFor(modelItem => item.Title)</h3>
+                    </div>
+                    <div class="caption">
+                        <h4>@Html.DisplayFor(modelItem => item.NewsItem)</h4>
+                        <p>
+                            @Html.ActionLink("Edit", "Edit", new { id = item.DateStamp }, "CompanyNews") |
+                            @Html.ActionLink("Delete", "Delete", new { id = item.DateStamp }, "CompanyNews") |
+                            @Html.ActionLink("Details", "Details", new { id = item.DateStamp }, "CompanyNews") |
+
+                        </p>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+</div>
+//------------------------------------------------------------------------------------------------------
+//Edit the model so that date formats match with controller
+
+using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+using System.Data.Entity;
+using System.Linq;
+using System.Web;
+using System.Web.Mvc;
+using System.Web.Mvc.Html;
+
+namespace ConstructionNew.Models
+{
+    public class CompanyNews
+    {
+        [Key]
+        [Display(Name = "Date")]
+        [DisplayFormat(DataFormatString = "{0:MM/dd/yy hh:mm tt}")]
+        public string DateStamp { get; set; }
+        [Display(Name = "Title")]
+        public string Title { get; set; }
+        [Display(Name = "Body")]
+        public string NewsItem { get; set; }
+        [DisplayFormat(DataFormatString = "{0:MM/dd/yy hh:mm tt}")]
+        public Nullable<DateTime> ExpirationDate { get; set; }
+}
+}
+
+//-------------------------------------------------------------
+// Edit Controller so that submit links return to company news index
+
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Data.Entity;
+using System.Linq;
+using System.Net;
+using System.Web;
+using System.Web.Mvc;
+using ConstructionNew.Models;
+
+
+
+namespace ConstructionNew.Controllers
+{
+   
+    public class CompanyNewsController : Controller
+    {
+        private ApplicationDbContext db = new ApplicationDbContext();
+
+        // GET: CompanyNews
+        [Authorize] //used to restrict view of unregistered users
+        public ActionResult Index()
+        {
+            return View(db.CompanyNews.ToList());
+        }
+
+        // Testing for work item 4341: Display Company News items with 
+        // Expiration dates that have not yet occurred, or are NULL.
+        public ActionResult UnexpiredNews()
+        {
+            var data = db.CompanyNews
+                .Where(x => !x.ExpirationDate.HasValue
+                || DbFunctions.DiffHours(x.ExpirationDate, DateTime.Now) <= 0);
+
+            return View(data.ToList());
+        }
+
+        // GET: CompanyNews/Details/5
+        [Authorize] //used to restrict view of unregistered users
+        public ActionResult Details(string id)
+        {
+            if (id == null)
+            {
+                return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
+            }
+            CompanyNews companyNews = db.CompanyNews.Find(id);
+            if (companyNews == null)
+            {
+                return HttpNotFound();
+            }
+            return View(companyNews);
+        }
+
+        // GET: CompanyNews/Create
+        [Authorize(Roles = "Admin")]
+        public ActionResult Create()
+        {
+            return View();
+        }
+
+        // POST: CompanyNews/Create
+        // To protect from overposting attacks, please enable the specific properties you want to bind to, for 
+        // more details see https://go.microsoft.com/fwlink/?LinkId=317598.
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Admin")]
+        public ActionResult Create([Bind(Include = "Title,NewsItem,ExpirationDate")] CompanyNews companyNews)
+        {
+            if (ModelState.IsValid)
+            {
+                companyNews.DateStamp = DateTime.Now.Ticks.ToString();
+                db.CompanyNews.Add(companyNews);
+                db.SaveChanges();
+                return RedirectToAction("Index", "Dashboard");
+            }
+
+            return View(companyNews);
+        }
+
+        // GET: CompanyNews/Edit/5
+        [Authorize(Roles = "Admin")]
+        public ActionResult Edit(string id)
+        {
+            if (id == null)
+            {
+                return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
+            }
+            CompanyNews companyNews = db.CompanyNews.Find(id);
+            if (companyNews == null)
+            {
+                return HttpNotFound();
+            }
+            return View(companyNews);
+        }
+
+        // POST: CompanyNews/Edit/5
+        // To protect from overposting attacks, please enable the specific properties you want to bind to, for 
+        // more details see https://go.microsoft.com/fwlink/?LinkId=317598.
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Admin")]
+        public ActionResult Edit([Bind(Include = "DateStamp,Title,NewsItem,ExpirationDate")] CompanyNews companyNews)
+        {
+            if (ModelState.IsValid)
+            {
+                db.Entry(companyNews).State = EntityState.Modified;
+                db.SaveChanges();
+                return RedirectToAction("Index");
+            }
+            return View(companyNews);
+        }
+
+        // GET: CompanyNews/Delete/5
+        [Authorize(Roles = "Admin")]
+        public ActionResult Delete(string id)
+        {
+            if (id == null)
+            {
+                return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
+            }
+            CompanyNews companyNews = db.CompanyNews.Find(id);
+            if (companyNews == null)
+            {
+                return HttpNotFound();
+            }
+            return View(companyNews);
+        }
+
+        // POST: CompanyNews/Delete/5
+        [HttpPost, ActionName("Delete")]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Admin")]
+        public ActionResult DeleteConfirmed(string id)
+        {
+            CompanyNews companyNews = db.CompanyNews.Find(id);
+            db.CompanyNews.Remove(companyNews);
+            db.SaveChanges();
+            return RedirectToAction("Index");
+        }
+
+        public ActionResult _CompanyNews()
+        {
+            return PartialView(db.CompanyNews.AsEnumerable());
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                db.Dispose();
+            }
+            base.Dispose(disposing);
+        }
+
+    }
+}
