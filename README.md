@@ -163,23 +163,13 @@ The links in the Company News partial view were not set up properly to access th
 
 <code><pre>
 //return Edit/Delete/Details Action Links to the company news index
-<div class="row">
-    @foreach (var item in Model)
-    {
+
         if (item.ExpirationDate.GetValueOrDefault(DateTime.Now).Ticks >= DateTime.Now.Ticks)
-        {
-            <div class="col-sm-6 col-md-4">
-                <div class="thumbnail">
-                    <div class="caption bg-info">
-                        <h3>@Html.DisplayFor(modelItem => item.Title)</h3>
-                    </div>
-                    <div class="caption">
-                        <h4>@Html.DisplayFor(modelItem => item.NewsItem)</h4>
-                        <p>
-                            @Html.ActionLink("Edit", "Edit", new { id = item.DateStamp }, "CompanyNews") |
-                            @Html.ActionLink("Delete", "Delete", new { id = item.DateStamp }, "CompanyNews") |
-                            @Html.ActionLink("Details", "Details", new { id = item.DateStamp }, "CompanyNews") |
-                        </p>
+       
+        @Html.ActionLink("Edit", "Edit", new { id = item.DateStamp }, "CompanyNews") |
+        @Html.ActionLink("Delete", "Delete", new { id = item.DateStamp }, "CompanyNews") |
+        @Html.ActionLink("Details", "Details", new { id = item.DateStamp }, "CompanyNews") |
+
 //------------------------------------------------------------------------------------------------------
 //Edit the model so that date formats match with controller
 
