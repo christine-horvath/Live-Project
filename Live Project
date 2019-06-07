@@ -260,3 +260,115 @@ namespace ConstructionNew.Controllers
 
     }
 }
+//fix return to dashboard 
+//-----------------------------------------------------
+[HttpPost]
+[ValidateAntiForgeryToken]
+[Authorize(Roles = "Admin")]
+        public ActionResult Create([Bind(Include = "Title,NewsItem,ExpirationDate")] CompanyNews companyNews)
+        {
+            if (ModelState.IsValid)
+            {
+                companyNews.DateStamp = DateTime.Now.Ticks.ToString();
+                db.CompanyNews.Add(companyNews);
+                db.SaveChanges();
+                return RedirectToAction("Index", "Dashboard");
+            }
+
+            return View(companyNews);
+        }
+ [HttpPost]
+ [AllowAnonymous]
+ [ValidateAntiForgeryToken]
+        public async Task<ActionResult> Register(RegisterViewModel model)
+        {
+            if (ModelState.IsValid)
+            {
+                var user = new ApplicationUser
+                {
+                    UserName = model.UserName,
+                    Email = model.Email,
+                    PhoneNumber = model.PhoneNumber,
+                    FName = model.FName,
+                    LName = model.LName,
+                    // Get user role
+                    UserRole = model.UserRoles
+                };
+                var identityResult = await UserManager.CreateAsync(user, model.Password);
+                if (identityResult.Succeeded)
+                {
+                    // assign user to role
+                    await UserManager.AddToRoleAsync(user.Id, user.UserRole);
+
+                    await SignInManager.SignInAsync(user, false, false); //#1 comment this line of code to test email confirmation link below #2
+
+                    // For more information on how to enable account confirmation and password reset please visit https://go.microsoft.com/fwlink/?LinkID=320771
+                    // Send an email with this link
+                    //#2 uncomment lines of code below to test email confirmation link
+                    //string code = await UserManager.GenerateEmailConfirmationTokenAsync(user.Id);
+                    //var callbackUrl = Url.Action("ConfirmEmail", "Account", new { userId = user.Id, code = code }, protocol: Request.Url.Scheme);
+                    //await UserManager.SendEmailAsync(user.Id, "Confirm your account", "Please confirm your account by clicking <a href=\"" + callbackUrl + "\">here</a>");
+
+                    // Delete CreateUserRequest
+                    using (db)
+                    {
+                        var createUserRequest = db.CreateUserRequests.First(x => x.UserName == user.UserName);
+                        if (createUserRequest != null) db.CreateUserRequests.Remove(createUserRequest);
+                        db.SaveChanges();
+                    }
+
+                    return RedirectToAction("Index", "Dashboard");
+                }
+            }
+            // If we got this far, something failed, redisplay form
+            return View(model);
+        }
+@*Partial view - return to dashboard*@
+@model ConstructionNew.Models.CompanyNews
+@{
+    ViewBag.Title = "Create";
+}
+
+@using (Html.BeginForm("Create", "CompanyNews", FormMethod.Post))
+
+{
+    @Html.AntiForgeryToken()
+
+    <form id="class_Form">
+
+        <!-- Button trigger modal -->
+        <br />
+        <button type="button" class="btn btn-primary btn-lg" style="color:#FFF; font-weight:600" data-toggle="modal" data-target="#myModal">
+            Create Company News
+        </button>
+
+        <!-- Modal -->
+
+        <div class="form-group  modal-news">
+            @Html.LabelFor(model => model.Title, htmlAttributes: new { @class = "control-label-lg" })
+            <br />
+            @Html.TextBoxFor(model => model.Title, new { htmlAttributes = new { @class = "form-control", @placeholder = "Title" } })
+            @Html.ValidationMessageFor(model => model.NewsItem, "", new { @class = "text-danger" })
+        </div>
+        <div class="form-group  modal-news">
+            @Html.LabelFor(model => model.NewsItem, htmlAttributes: new { @class = "control-label" })
+            <br />
+            @Html.TextAreaFor(model => model.NewsItem, new { htmlAttributes = new { @class = "form-control", @placeholder = "News" } })
+            @Html.ValidationMessageFor(model => model.NewsItem, "", new { @class = "text-danger" })
+        </div>
+        <div class="form-group modal-news">
+            @Html.LabelFor(model => model.ExpirationDate, htmlAttributes: new { @class = "date" })
+            <br />
+            @Html.EditorFor(model => model.ExpirationDate, new { htmlAttributes = new { @class = "datepicker", type = "date" } })
+            @Html.ValidationMessageFor(model => model.ExpirationDate, "", new { @class = "text-danger" })
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+            <button type="submit" class="btn btn-primary">Save changes</button>
+        </div>
+        <div>
+            @Html.ActionLink("Back to List", "Index") |
+            @Html.ActionLink("Back to Dashboard", "Index", "Dashboard")
+        </div>
+
+    </form>
